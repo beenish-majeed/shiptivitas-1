@@ -3,17 +3,12 @@ import './Card.css';
 
 export default class Card extends React.Component {
   render() {
-    let className = ['Card'];
-    if (this.props.status === 'backlog') {
-      className.push('Card-grey');
-    } else if (this.props.status === 'in-progress') {
-      className.push('Card-blue');
-    } else if (this.props.status === 'complete') {
-      className.push('Card-green');
-    }
+    const { id, name, description, status } = this.props;
     return (
-      <div className={className.join(' ')} data-id={this.props.id} data-status={this.props.status}>
-        <div className="Card-title">{this.props.name}</div>
+      // data-id is how Board reads the order back from the DOM
+      <div className={`Card Card-${status}`} data-id={id}>
+        <div className="Card-title">{name}</div>
+        <div className="Card-description">{description}</div>
       </div>
     );
   }

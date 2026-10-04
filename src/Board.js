@@ -4,24 +4,22 @@ import 'dragula/dist/dragula.css';
 import Swimlane from './Swimlane';
 import './Board.css';
 
+const LANE_STATUS = {
+  backlog: 'backlog',
+  inProgress: 'in-progress',
+  complete: 'complete',
+};
+
 export default class Board extends React.Component {
   constructor(props) {
     super(props);
 
-    const clients = this.getClients();
-
     this.state = {
       clients: {
-        backlog: clients.filter(
-          client => !client.status || client.status === 'backlog'
-        ),
-        inProgress: clients.filter(
-          client => client.status === 'in-progress'
-        ),
-        complete: clients.filter(
-          client => client.status === 'complete'
-        ),
-      }
+        backlog: this.getClients(),
+        inProgress: [],
+        complete: [],
+      },
     };
 
     this.swimlanes = {
@@ -46,130 +44,106 @@ export default class Board extends React.Component {
   componentWillUnmount() {
     if (this.drake) {
       this.drake.destroy();
+      this.drake = null;
     }
   }
 
-  handleDrop = (element, target, source) => {
-    const id = element.dataset.id;
+  getLaneIds = ref => {
+    if (!ref.current) return [];
+    return Array.from(ref.current.children)
+      .map(child => child.dataset.id)
+      .filter(Boolean);
+  };
 
-    let newStatus;
+  handleDrop = (element, target) => {
+    if (!target) return;
 
-    if (target === this.swimlanes.backlog.current) {
-      newStatus = 'backlog';
-    } else if (target === this.swimlanes.inProgress.current) {
-      newStatus = 'in-progress';
-    } else if (target === this.swimlanes.complete.current) {
-      newStatus = 'complete';
-    }
+    // 1. Read the new order from the DOM Dragula just changed
+    const ids = {
+      backlog: this.getLaneIds(this.swimlanes.backlog),
+      inProgress: this.getLaneIds(this.swimlanes.inProgress),
+      complete: this.getLaneIds(this.swimlanes.complete),
+    };
 
-    if (!newStatus) {
-      return;
-    }
+    // 2. Revert Dragula's DOM change so React owns the DOM again.
+    //    cancel(true) = revert + emit 'cancel' (NOT 'drop'), so no recursion.
+    this.drake.cancel(true);
 
-    this.setState(prevState => {
-      const allClients = [
-        ...prevState.clients.backlog,
-        ...prevState.clients.inProgress,
-        ...prevState.clients.complete,
-      ];
-
-      const movedClient = allClients.find(client => client.id === id);
-
-      if (!movedClient) {
-        return null;
-      }
-
-      movedClient.status = newStatus;
-
-      const updatedClients = {
-        backlog: [],
-        inProgress: [],
-        complete: [],
-      };
-
-      allClients.forEach(client => {
-        if (client.status === 'backlog') {
-          updatedClients.backlog.push(client);
-        } else if (client.status === 'in-progress') {
-          updatedClients.inProgress.push(client);
-        } else if (client.status === 'complete') {
-          updatedClients.complete.push(client);
-        }
+    // 3. Let React do the real move
+    this.setState(prev => {
+      const clientMap = {};
+      [
+        ...prev.clients.backlog,
+        ...prev.clients.inProgress,
+        ...prev.clients.complete,
+      ].forEach(c => {
+        clientMap[c.id] = c;
       });
 
+      const buildLane = (laneIds, status) =>
+        laneIds
+          .map(id => clientMap[id])
+          .filter(Boolean)
+          .map(c => ({ ...c, status }));
+
       return {
-        clients: updatedClients,
+        clients: {
+          backlog: buildLane(ids.backlog, LANE_STATUS.backlog),
+          inProgress: buildLane(ids.inProgress, LANE_STATUS.inProgress),
+          complete: buildLane(ids.complete, LANE_STATUS.complete),
+        },
       };
     });
   };
 
   getClients() {
     return [
-      ['1','Stark, White and Abbott','Cloned Optimal Architecture', 'in-progress'],
-      ['2','Wiza LLC','Exclusive Bandwidth-Monitored Implementation', 'complete'],
-      ['3','Nolan LLC','Vision-Oriented 4Thgeneration Graphicaluserinterface', 'backlog'],
-      ['4','Thompson PLC','Streamlined Regional Knowledgeuser', 'in-progress'],
-      ['5','Walker-Williamson','Team-Oriented 6Thgeneration Matrix', 'in-progress'],
-      ['6','Boehm and Sons','Automated Systematic Paradigm', 'backlog'],
-      ['7','Runolfsson, Hegmann and Block','Integrated Transitional Strategy', 'backlog'],
-      ['8','Schumm-Labadie','Operative Heuristic Challenge', 'backlog'],
-      ['9','Kohler Group','Re-Contextualized Multi-Tasking Attitude', 'backlog'],
-      ['10','Romaguera Inc','Managed Foreground Toolset', 'backlog'],
-      ['11','Reilly-King','Future-Proofed Interactive Toolset', 'complete'],
-      ['12','Emard, Champlin and Runolfsdottir','Devolved Needs-Based Capability', 'backlog'],
-      ['13','Fritsch, Cronin and Wolff','Open-Source 3Rdgeneration Website', 'complete'],
-      ['14','Borer LLC','Profit-Focused Incremental Orchestration', 'backlog'],
-      ['15','Emmerich-Ankunding','User-Centric Stable Extranet', 'in-progress'],
-      ['16','Willms-Abbott','Progressive Bandwidth-Monitored Access', 'in-progress'],
-      ['17','Brekke PLC','Intuitive User-Facing Customerloyalty', 'complete'],
-      ['18','Bins, Toy and Klocko','Integrated Assymetric Software', 'backlog'],
-      ['19','Hodkiewicz-Hayes','Programmable Systematic Securedline', 'backlog'],
-      ['20','Murphy, Lang and Ferry','Organized Explicit Access', 'backlog'],
-    ].map(companyDetails => ({
-      id: companyDetails[0],
-      name: companyDetails[1],
-      description: companyDetails[2],
-      status: companyDetails[3],
+      ['1', 'Stark, White and Abbott', 'Cloned Optimal Architecture'],
+      ['2', 'Wiza LLC', 'Exclusive Bandwidth-Monitored Implementation'],
+      ['3', 'Nolan LLC', 'Vision-Oriented 4Thgeneration Graphicaluserinterface'],
+      ['4', 'Thompson PLC', 'Streamlined Regional Knowledgeuser'],
+      ['5', 'Walker-Williamson', 'Team-Oriented 6Thgeneration Matrix'],
+      ['6', 'Boehm and Sons', 'Automated Systematic Paradigm'],
+      ['7', 'Runolfsson, Hegmann and Block', 'Integrated Transitional Strategy'],
+      ['8', 'Schumm-Labadie', 'Operative Heuristic Challenge'],
+      ['9', 'Kohler Group', 'Re-Contextualized Multi-Tasking Attitude'],
+      ['10', 'Romaguera Inc', 'Managed Foreground Toolset'],
+      ['11', 'Reilly-King', 'Future-Proofed Interactive Toolset'],
+      ['12', 'Emard, Champlin and Runolfsdottir', 'Devolved Needs-Based Capability'],
+      ['13', 'Fritsch, Cronin and Wolff', 'Open-Source 3Rdgeneration Website'],
+      ['14', 'Borer LLC', 'Profit-Focused Incremental Orchestration'],
+      ['15', 'Emmerich-Ankunding', 'User-Centric Stable Extranet'],
+      ['16', 'Willms-Abbott', 'Progressive Bandwidth-Monitored Access'],
+      ['17', 'Brekke PLC', 'Intuitive User-Facing Customerloyalty'],
+      ['18', 'Bins, Toy and Klocko', 'Integrated Assymetric Software'],
+      ['19', 'Hodkiewicz-Hayes', 'Programmable Systematic Securedline'],
+      ['20', 'Murphy, Lang and Ferry', 'Organized Explicit Access'],
+    ].map(d => ({
+      id: d[0],
+      name: d[1],
+      description: d[2],
+      status: 'backlog',
     }));
   }
 
   renderSwimlane(name, clients, ref) {
-    return (
-      <Swimlane
-        name={name}
-        clients={clients}
-        dragulaRef={ref}
-      />
-    );
+    return <Swimlane name={name} clients={clients} dragulaRef={ref} />;
   }
 
   render() {
+    const { backlog, inProgress, complete } = this.state.clients;
     return (
       <div className="Board">
         <div className="container-fluid">
           <div className="row">
             <div className="col-md-4">
-              {this.renderSwimlane(
-                'Backlog',
-                this.state.clients.backlog,
-                this.swimlanes.backlog
-              )}
+              {this.renderSwimlane('Backlog', backlog, this.swimlanes.backlog)}
             </div>
-
             <div className="col-md-4">
-              {this.renderSwimlane(
-                'In Progress',
-                this.state.clients.inProgress,
-                this.swimlanes.inProgress
-              )}
+              {this.renderSwimlane('In Progress', inProgress, this.swimlanes.inProgress)}
             </div>
-
             <div className="col-md-4">
-              {this.renderSwimlane(
-                'Complete',
-                this.state.clients.complete,
-                this.swimlanes.complete
-              )}
+              {this.renderSwimlane('Complete', complete, this.swimlanes.complete)}
             </div>
           </div>
         </div>

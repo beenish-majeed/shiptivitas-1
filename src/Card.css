@@ -1,25 +1,12 @@
 .Card {
-  background-color: lightgrey;
-  font-size: 12px;
-  padding: 20px;
+  padding: 10px;
   margin-bottom: 10px;
+  border-radius: 4px;
+  color: #fff;
+  cursor: grab;
 }
-
-.Card-grey {
-  background-color: rgba(167, 158, 158, 0.671);
-  color: black;
-}
-
-.Card-blue {
-  background-color: skyblue;
-  color: white;
-}
-
-.Card-green {
-  background-color: rgb(150, 190, 150);
-  color: white;
-}
-
-.Card-title {
-  font-weight: bold;
-}
+.Card-backlog     { background-color: #6c757d; }  /* grey  */
+.Card-in-progress { background-color: #0d6efd; }  /* blue  */
+.Card-complete    { background-color: #198754; }  /* green */
+.Card-title       { font-weight: bold; }
+.Card-description { font-size: 0.85rem; opacity: 0.9; }
